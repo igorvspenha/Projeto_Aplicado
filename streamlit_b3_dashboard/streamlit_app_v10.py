@@ -158,37 +158,47 @@ if executar:
     resultados = []
     fig, ax = plt.subplots(figsize=(12, 6))
 
-    for ativo in ativos:
-        df = yf.download(ativo, start=data_inicio, end=data_fim)
-        df.columns = [col.strip() for col in df.columns]
-        expected_cols = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
-        df = df[[col for col in expected_cols if col in df.columns]]
+for ativo in ativos:
+    st.subheader(f"⏳ Analisando ativo: {ativo}")
+    df = yf.download(ativo, start=data_inicio, end=data_fim)
 
-        data = bt.feeds.PandasData(dataname=df)
+    # Debug: mostrar preview ou erro
+    if df is None or df.empty:
+        st.warning(f"Nenhum dado retornado para o ativo {ativo}. Verifique o ticker ou o período selecionado.")
+        continue
+    else:
+        st.success(f"✅ Dados carregados para {ativo}.")
+        st.dataframe(df.head())
 
-        cerebro = bt.Cerebro()
-        cerebro.broker.set_cash(10000)
-        cerebro.adddata(data)
-        cerebro.addstrategy(eval(estrategias[estrategia_nome]))
+    df.columns = [col.strip() for col in df.columns]
+    expected_cols = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
+    df = df[[col for col in expected_cols if col in df.columns]]
 
-        class Equity(bt.Analyzer):
-            def __init__(self): self.equity = []
-            def next(self): self.equity.append(self.strategy.broker.getvalue())
+    data = bt.feeds.PandasData(dataname=df)
 
-        cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='sharpe')
-        cerebro.addanalyzer(bt.analyzers.DrawDown, _name='drawdown')
-        cerebro.addanalyzer(Equity, _name='equity')
+    cerebro = bt.Cerebro()
+    cerebro.broker.set_cash(10000)
+    cerebro.adddata(data)
+    cerebro.addstrategy(eval(estrategias[estrategia_nome]))
 
-        results = cerebro.run()[0]
-        equity = results.analyzers.equity.equity
-        ax.plot(equity, label=ativo)
+    class Equity(bt.Analyzer):
+        def __init__(self): self.equity = []
+        def next(self): self.equity.append(self.strategy.broker.getvalue())
 
-        resultados.append({
-            'Ação': ativo,
-            'Retorno Total (R$)': round(equity[-1] - 10000, 2),
-            'Sharpe': round(results.analyzers.sharpe.get_analysis().get('sharperatio', 0), 2),
-            'Drawdown (%)': round(results.analyzers.drawdown.get_analysis()['max']['drawdown'], 2)
-        })
+    cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='sharpe')
+    cerebro.addanalyzer(bt.analyzers.DrawDown, _name='drawdown')
+    cerebro.addanalyzer(Equity, _name='equity')
+
+    results = cerebro.run()[0]
+    equity = results.analyzers.equity.equity
+    ax.plot(equity, label=ativo)
+
+    resultados.append({
+        'Ação': ativo,
+        'Retorno Total (R$)': round(equity[-1] - 10000, 2),
+        'Sharpe': round(results.analyzers.sharpe.get_analysis().get('sharperatio', 0), 2),
+        'Drawdown (%)': round(results.analyzers.drawdown.get_analysis()['max']['drawdown'], 2)
+    })
 
     ax.set_title(f'💰 Curva de Capital - Estratégia: {estrategia_nome}')
     ax.set_xlabel('Período')
