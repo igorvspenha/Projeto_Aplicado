@@ -154,11 +154,16 @@ if executar:
     resultados = []
     fig, ax = plt.subplots(figsize=(12, 6))
 
+if executar:
+    resultados = []
+    fig, ax = plt.subplots(figsize=(12, 6))
+
     for ativo in ativos:
         df = yf.download(ativo, start=data_inicio, end=data_fim)
-    df.columns = [col.strip() for col in df.columns]
-    expected_cols = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
-    df = df[[col for col in expected_cols if col in df.columns]]
+        df.columns = [col.strip() for col in df.columns]
+        expected_cols = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
+        df = df[[col for col in expected_cols if col in df.columns]]
+
         data = bt.feeds.PandasData(dataname=df)
 
         cerebro = bt.Cerebro()
